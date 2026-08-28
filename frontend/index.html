@@ -1,68 +1,148 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta character = "UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBGraph</title>
-    <link rel = "stylesheet" href = "style.css">
-    
-  </head>
-
-
-  <body>
-    <header class "topbar">
-      <div>
-        <h1>RBGrpah</h1>
-        <p>Describe systems. Build diagrams.</p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>RBGraph</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">RB</div>
+        <div>
+          <h1>RBGraph</h1>
+          <p>Describe systems. See the structure.</p>
+        </div>
       </div>
-      <button id = "themToggle" type="button">
-        Toogle Them
-      </button>
+      <div class="topbar-actions">
+        <span id="connectionStatus" class="status-pill">Ready</span>
+        <button id="themeToggle" class="icon-button" type="button" aria-label="Toggle theme">☾</button>
+      </div>
     </header>
 
+    <main class="workspace">
+      <aside class="sidebar">
+        <section class="panel composer-panel">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">CREATE</span>
+              <h2>New diagram</h2>
+            </div>
+          </div>
 
-    <main class ="app">
-      <section class = "input-pannel">
-        <h2>Describe your system </h2>
+          <label class="field">
+            <span>Name</span>
+            <input id="diagramName" type="text" value="My System" maxlength="120">
+          </label>
 
-        <textarea
-          id="description"
-          placeholder = "Example : A user connects to FastAPI backend , which uses Redis and postgreSQL."
-          ></textarea>
+          <label class="field">
+            <span>Diagram type</span>
+            <select id="diagramType">
+              <option value="architecture">Architecture</option>
+              <option value="workflow">Workflow</option>
+              <option value="sequence">Sequence</option>
+              <option value="data_flow">Data flow</option>
+              <option value="lifecycle">Lifecycle</option>
+            </select>
+          </label>
 
+          <label class="field">
+            <span>Describe it</span>
+            <textarea id="promptInput" rows="7" placeholder="A user connects to a FastAPI backend, which uses Redis and PostgreSQL. GitHub Actions deploys to AWS Lambda."></textarea>
+          </label>
 
+          <button id="generateButton" class="primary-button" type="button">
+            <span>Generate</span>
+            <span>↗</span>
+          </button>
 
-        <button id = "generateButton" type"button">
-          Generate Diagram
-        </button>
+          <div class="quick-actions">
+            <button type="button" class="chip" data-example="User connects to React frontend and React connects to FastAPI. FastAPI uses Redis and PostgreSQL.">API stack</button>
+            <button type="button" class="chip" data-example="Developer pushes code to GitHub, GitHub Actions runs tests, then deploys to AWS Lambda.">CI/CD</button>
+            <button type="button" class="chip" data-example="User sends data to API, API checks Redis, then reads PostgreSQL and returns the response.">Data flow</button>
+          </div>
+        </section>
 
+        <section class="panel chat-panel">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">EDIT</span>
+              <h2>Chat with the diagram</h2>
+            </div>
+          </div>
 
+          <div id="chatMessages" class="chat-messages">
+            <div class="chat-message assistant">
+              Generate a diagram, then use commands like <strong>add Redis</strong>, <strong>move auth left</strong>, or <strong>highlight rollback path</strong>.
+            </div>
+          </div>
 
-        <p id "status"></p>
+          <div class="command-row">
+            <input id="commandInput" type="text" placeholder="Try: add Redis">
+            <button id="commandButton" class="icon-button filled" type="button" aria-label="Send command">↗</button>
+          </div>
+        </section>
 
+        <section class="panel history-panel">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">SAVED</span>
+              <h2>History</h2>
+            </div>
+            <button id="refreshHistory" class="text-button" type="button">Refresh</button>
+          </div>
+          <div id="historyList" class="history-list">
+            <div class="empty-history">No saved diagrams yet.</div>
+          </div>
+        </section>
+      </aside>
 
-      </section>
-
-
-      <section class = "diagram-panel">
-
-        <div class ="panel-header">
-          <h2>Diagram</h2>
+      <section class="canvas-area">
+        <div class="canvas-toolbar">
+          <div>
+            <span id="diagramMeta" class="meta-text">No diagram yet</span>
+          </div>
+          <div class="toolbar-actions">
+            <button id="zoomOut" class="small-button" type="button">−</button>
+            <button id="zoomReset" class="small-button zoom-value" type="button">100%</button>
+            <button id="zoomIn" class="small-button" type="button">+</button>
+            <button id="saveButton" class="small-button" type="button">Save</button>
+            <button id="copyPng" class="small-button" type="button">Copy PNG</button>
+            <select id="exportFormat" class="small-select">
+              <option value="svg">SVG</option>
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+              <option value="html">Standalone HTML</option>
+            </select>
+            <select id="exportScale" class="small-select">
+              <option value="1">1×</option>
+              <option value="2">2×</option>
+              <option value="4" selected>4×</option>
+            </select>
+            <button id="exportButton" class="primary-small-button" type="button">Export</button>
+          </div>
         </div>
 
-
-        <div id = "diagramcanvas">
-          <p class ="empty-state">
-            your diagram will appare here 
-          </p>
+        <div id="diagramStage" class="diagram-stage">
+          <div class="empty-canvas">
+            <div class="empty-icon">RB</div>
+            <h2>Your diagram will appear here</h2>
+            <p>Describe a system to start.</p>
+          </div>
         </div>
+
+        <footer class="canvas-footer">
+          <span id="validationStatus">Waiting for a diagram</span>
+          <span>Standalone export · No external assets</span>
+        </footer>
       </section>
     </main>
+  </div>
 
-
-    <script src = "app.js"></script>
-  </body>
+  <script src="/assets/app.js"></script>
+</body>
 </html>
-      
-      
-  </body>
