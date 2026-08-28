@@ -1,1 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta character = "UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBGraph</title>
+    <link rel = "stylesheet" href = "style.css">
+    
+  </head>
 
+
+  <body>
+    <header class "topbar">
+      <div>
+        <h1>RBGrpah</h1>
+        <p>Describe systems. Build diagrams.</p>
+      </div>
+      <button id = "themToggle" type="button">
+        Toogle Them
+      </button>
+    </header>
+
+
+    <main class ="app">
+      <section class = "input-pannel">
+        <h2>Describe your system </h2>
+
+        <textarea
+          id="description"
+          placeholder = "Example : A user connects to FastAPI backend , which uses Redis and postgreSQL."
+          ></textarea>
+
+
+
+        <button id = "generateButton" type"button">
+          Generate Diagram
+        </button>
+
+
+
+        <p id "status"></p>
+
+
+      </section>
+
+
+      <section class = "diagram-panel">
+
+        <div class ="panel-header">
+          <h2>Diagram</h2>
+        </div>
+
+
+        <div id = "diagramcanvas">
+          <p class ="empty-state">
+            your diagram will appare here 
+          </p>
+        </div>
+      </section>
+    </main>
+
+
+    <script src = "app.js"></script>
+  </body>
+</html>
+      
+      
+  </body>
