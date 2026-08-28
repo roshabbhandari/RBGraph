@@ -30,12 +30,15 @@ def render_svg(diagram: Diagram) -> str:
     if not diagram.nodes:
         raise ValueError("A diagram must contain at least one node.")
 
-    positions = _layout_nodes(diagram)
+    if all(node.x is not None and node.y is not None for node in diagram.nodes):
+        positions = {node.id: (float(node.x), float(node.y)) for node in diagram.nodes}
+    else:
+        positions = _layout_nodes(diagram)
+        for node in diagram.nodes:
+            node.x, node.y = positions[node.id]
+
     width = max(920, max(x for x, _ in positions.values()) + NODE_WIDTH / 2 + 80)
     height = max(560, max(y for _, y in positions.values()) + NODE_HEIGHT / 2 + 100)
-
-    for node in diagram.nodes:
-        node.x, node.y = positions[node.id]
 
     parts = [
         f'<svg class="rbgraph-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:g} {height:g}" role="img" aria-label="{escape(diagram.name)}">',
