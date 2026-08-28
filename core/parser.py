@@ -1,14 +1,121 @@
-
 import re
+from typing import Dict, Iterable, List, Tuple
 
 from core.models import Diagram, DiagramType, Edge, Node
 
 
+ALIASES = {
+    "postgresql": ("PostgreSQL", "database"),
+    "postgres": ("PostgreSQL", "database"),
+    "mysql": ("MySQL", "database"),
+    "sqlite": ("SQLite", "database"),
+    "mongodb": ("MongoDB", "database"),
+    "redis": ("Redis", "cache"),
+    "github actions": ("GitHub Actions", "automation"),
+    "github": ("GitHub", "service"),
+    "openai": ("OpenAI", "ai"),
+    "aws lambda": ("AWS Lambda", "serverless"),
+    "lambda": ("AWS Lambda", "serverless"),
+    "aws": ("AWS", "cloud"),
+    "fastapi": ("FastAPI", "backend"),
+    "react": ("React", "frontend"),
+    "next.js": ("Next.js", "frontend"),
+    "nextjs": ("Next.js", "frontend"),
+    "frontend": ("Frontend", "frontend"),
+    "backend": ("Backend", "backend"),
+    "api": ("API", "backend"),
+    "authentication": ("Authentication", "security"),
+    "auth": ("Authentication", "security"),
+    "user": ("User", "user"),
+    "client": ("Client", "user"),
+    "browser": ("Browser", "user"),
+    "queue": ("Queue", "service"),
+    "worker": ("Worker", "service"),
+}
+
+
+RELATION_PATTERNS = [
+    (re.compile(r"(.+?)\s+(?:connects?|talks?|communicates?)\s+(?:to|with)\s+(.+)", re.I), "connects"),
+    (re.compile(r"(.+?)\s+(?:sends?|passes?)\s+(?:data\s+)?(?:to|into)\s+(.+)", re.I), "sends"),
+    (re.compile(r"(.+?)\s+(?:calls?|requests?)\s+(.+)", re.I), "calls"),
+    (re.compile(r"(.+?)\s+(?:uses?|reads?\s+from|writes?\s+to|depends?\s+on)\s+(.+)", re.I), "uses"),
+    (re.compile(r"(.+?)\s+(?:deploys?|ships?)\s+(?:to|into)\s+(.+)", re.I), "deploys"),
+    (re.compile(r"(.+?)\s+(?:triggers?|starts?)\s+(.+)", re.I), "triggers"),
+    (re.compile(r"(.+?)\s+(?:transitions?|moves?)\s+(?:to|into)\s+(.+)", re.I), "transitions"),
+]
+
+
 def clean_name(value: str) -> str:
-    """Clean a component name."""
-    value = value.strip()
+    value = re.sub(r"^\s*(?:a|an|the)\s+", "", value.strip(), flags=re.I)
     value = re.sub(r"\s+", " ", value)
-    return value
+    return value.strip(" ,.;:")
+
+
+def normalize_id(label: str) -> str:
+    value = re.sub(r"[^a-zA-Z0-9]+", "-", label.lower()).strip("-")
+    return value or "node"
+
+
+def detect_category(label: str) -> str:
+    value = label.lower()
+    for keyword in sorted(ALIASES, key=len, reverse=True):
+        if keyword in value:
+            return ALIASES[keyword][1]
+    return "default"
+
+
+def canonical_label(label: str) -> str:
+    cleaned = clean_name(label)
+    value = cleaned.lower()
+    for keyword in sorted(ALIASES, key=len, reverse=True):
+        if value == keyword or keyword in value:
+            return ALIASES[keyword][0]
+    return cleaned
+
+
+def _split_clauses(description: str) -> List[str]:
+    text = description.replace("→", "->").replace("➜", "->").replace("⇒", "->")
+    text = re.sub(r"\s*->\s*", " -> ", text)
+    text = re.sub(r"\s+and\s+", " | ", text, flags=re.I)
+    text = re.sub(r"[.;\n]+", " | ", text)
+    return [clean_name(item) for item in text.split("|") if clean_name(item)]
+
+
+def _add_node(nodes: Dict[str, Node], label: str) -> str:
+    label = canonical_label(label)
+    node_id = normalize_id(label)
+    if node_id not in nodes:
+        nodes[node_id] = Node(id=node_id, label=label, category=detect_category(label))
+    return node_id
+
+
+def _parse_relation(clause: str) -> Tuple[str, str, str] | None:
+    if "->" in clause:
+        pieces = [clean_name(piece) for piece in clause.split("->") if clean_name(piece)]
+        if len(pieces) >= 2:
+            return pieces[0], pieces[1], "flows"
+
+    for pattern, label in RELATION_PATTERNS:
+        match = pattern.fullmatch(clause)
+        if match:
+            return clean_name(match.group(1)), clean_name(match.group(2)), label
+
+    return None
+
+
+def _extract_mentions(text: str) -> Iterable[str]:
+    lower = text.lower()
+    found: List[Tuple[int, int, str]] = []
+
+    for keyword in sorted(ALIASES, key=len, reverse=True):
+        pattern = re.compile(r"(?<!\w)" + re.escape(keyword) + r"(?!\w)", re.I)
+        for match in pattern.finditer(lower):
+            if any(start < match.end() and match.start() < end for start, end, _ in found):
+                continue
+            found.append((match.start(), match.end(), ALIASES[keyword][0]))
+
+    for _, _, label in sorted(found):
+        yield label
 
 
 def parse_description(
@@ -16,98 +123,47 @@ def parse_description(
     name: str = "Untitled Diagram",
     diagram_type: DiagramType = DiagramType.ARCHITECTURE,
 ) -> Diagram:
-    """
-    Convert a simple plain-English description
-    into an RBGraph diagram model.
-    """
-
     description = clean_name(description)
-
     if not description:
         raise ValueError("Description cannot be empty.")
 
-    nodes = {}
-    edges = []
+    nodes: Dict[str, Node] = {}
+    edges: List[Edge] = []
 
-    # Detect simple relationships such as:
-    # "User connects to API"
-    # "API connects to PostgreSQL"
-    pattern = re.compile(
-        r"([A-Za-z0-9_.-]+(?:\s+[A-Za-z0-9_.-]+)*)"
-        r"\s+(?:connects?\s+to|sends?\s+to|calls?|uses?)\s+"
-        r"([A-Za-z0-9_.-]+(?:\s+[A-Za-z0-9_.-]+)*)",
-        re.IGNORECASE,
-    )
+    for clause in _split_clauses(description):
+        relation = _parse_relation(clause)
+        if relation:
+            source, target, relation_label = relation
+            source_id = _add_node(nodes, source)
+            target_id = _add_node(nodes, target)
+            if source_id != target_id:
+                edges.append(Edge(source=source_id, target=target_id, label=relation_label))
+            continue
 
-    matches = pattern.findall(description)
+        for mention in _extract_mentions(clause):
+            _add_node(nodes, mention)
 
-    for source, target in matches:
-        source = clean_name(source)
-        target = clean_name(target)
+    if not nodes:
+        chunks = [clean_name(part) for part in re.split(r"\s+to\s+|\s+and\s+|,", description, flags=re.I) if clean_name(part)]
+        for chunk in chunks[:8]:
+            if len(chunk.split()) <= 5:
+                _add_node(nodes, chunk)
 
-        source_id = source.lower().replace(" ", "-")
-        target_id = target.lower().replace(" ", "-")
+    node_ids = list(nodes)
+    if not edges and len(node_ids) > 1:
+        edges.extend(Edge(source=source_id, target=target_id, label="flows") for source_id, target_id in zip(node_ids, node_ids[1:]))
 
-        if source_id not in nodes:
-            nodes[source_id] = Node(
-                id=source_id,
-                label=source,
-                category=detect_category(source),
-            )
-
-        if target_id not in nodes:
-            nodes[target_id] = Node(
-                id=target_id,
-                label=target,
-                category=detect_category(target),
-            )
-
-        edges.append(
-            Edge(
-                source=source_id,
-                target=target_id,
-            )
-        )
+    seen = set()
+    unique_edges = []
+    for edge in edges:
+        key = (edge.source, edge.target, edge.label)
+        if key not in seen:
+            seen.add(key)
+            unique_edges.append(edge)
 
     return Diagram(
-        name=name,
+        name=clean_name(name) or "Untitled Diagram",
         diagram_type=diagram_type,
         nodes=list(nodes.values()),
-        edges=edges,
+        edges=unique_edges,
     )
-
-
-def detect_category(label: str) -> str:
-    """
-    Detect a basic visual category from a technology/component name.
-    """
-
-    value = label.lower()
-
-    categories = {
-        "postgres": "database",
-        "postgresql": "database",
-        "mysql": "database",
-        "sqlite": "database",
-        "mongodb": "database",
-        "redis": "cache",
-        "api": "backend",
-        "fastapi": "backend",
-        "backend": "backend",
-        "frontend": "frontend",
-        "react": "frontend",
-        "user": "user",
-        "client": "user",
-        "github": "service",
-        "github-actions": "automation",
-        "openai": "ai",
-        "lambda": "serverless",
-        "aws": "cloud",
-    }
-
-    for keyword, category in categories.items():
-        if keyword in value:
-            return category
-
-    return "default"
-
