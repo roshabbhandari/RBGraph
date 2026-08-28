@@ -187,7 +187,7 @@ function parseViewBox(svg) {
   const value = svg.getAttribute("viewBox");
   if (!value) throw new Error("SVG viewBox is missing.");
   const values = value.trim().split(/\s+/).map(Number);
-  if (values.length !== 4 || values.some(Number.isNaN)) throw new Error("SVG viewBox is invalid.");
+  if (values.length !== 4 || values.some(Number.isNaN) || values[2] <= 0 || values[3] <= 0) throw new Error("SVG viewBox is invalid.");
   return {x: values[0], y: values[1], width: values[2], height: values[3]};
 }
 
@@ -223,6 +223,7 @@ async function rasterizeSvg(type, scale) {
     canvas.height = Math.ceil(viewBox.height * scale);
 
     const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas rendering is unavailable.");
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -249,10 +250,22 @@ function fileBase() {
   return (currentDiagram?.name || "rbgraph-diagram").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "rbgraph-diagram";
 }
 
+function validateStandaloneHtml(html) {
+  const parser = new DOMParser();
+  const documentNode = parser.parseFromString(html, "text/html");
+  if (!documentNode.documentElement || !documentNode.head || !documentNode.body) throw new Error("Standalone HTML structure is invalid.");
+  if (documentNode.querySelector("parsererror")) throw new Error("Standalone HTML could not be parsed.");
+  const svg = documentNode.querySelector("svg");
+  if (!svg) throw new Error("Standalone HTML is missing the SVG diagram.");
+  if (!svg.getAttribute("viewBox")) throw new Error("Standalone SVG is missing its viewBox.");
+  if (documentNode.querySelector("link[href],img[src],iframe[src],object[data],script[src]")) throw new Error("Standalone export contains an external dependency.");
+  return html;
+}
+
 function standaloneHtml() {
   const svg = elements.stage.querySelector("svg");
   if (!svg) throw new Error("There is no diagram to export.");
-  return `<!doctype html>
+  const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -264,7 +277,7 @@ function standaloneHtml() {
 </head>
 <body>
 <div class="viewer">
-<div class="toolbar"><strong>${escapeText(currentDiagram.name)}</strong><button id="theme">Toggle theme</button></div>
+<div class="toolbar"><strong>${escapeText(currentDiagram.name)}</strong><button id="theme" type="button">Toggle theme</button></div>
 <div class="frame">${svg.outerHTML}</div>
 </div>
 <script>
@@ -273,6 +286,7 @@ button.addEventListener("click",()=>{document.documentElement.style.colorScheme=
 </script>
 </body>
 </html>`;
+  return validateStandaloneHtml(html);
 }
 
 async function exportDiagram() {
@@ -286,7 +300,10 @@ async function exportDiagram() {
   setStatus("Exporting", "busy");
   try {
     if (format === "svg") {
-      downloadBlob(await svgToBlob(), `${fileBase()}.svg`);
+      const svg = await svgToBlob();
+      const svgText = await svg.text();
+      validateStandaloneHtml(`<!doctype html><html><head><meta charset="utf-8"></head><body>${svgText}</body></html>`);
+      downloadBlob(svg, `${fileBase()}.svg`);
     } else if (format === "html") {
       downloadBlob(new Blob([standaloneHtml()], {type: "text/html;charset=utf-8"}), `${fileBase()}.html`);
     } else {
