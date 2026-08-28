@@ -1,4 +1,3 @@
-
 from enum import Enum
 from typing import List, Optional
 
@@ -14,21 +13,22 @@ class DiagramType(str, Enum):
 
 
 class Node(BaseModel):
-    id: str = Field(min_length=1)
-    label: str = Field(min_length=1)
+    id: str = Field(min_length=1, max_length=80)
+    label: str = Field(min_length=1, max_length=120)
     category: str = "default"
     x: Optional[float] = None
     y: Optional[float] = None
 
 
 class Edge(BaseModel):
-    source: str = Field(min_length=1)
-    target: str = Field(min_length=1)
-    label: Optional[str] = None
+    source: str = Field(min_length=1, max_length=80)
+    target: str = Field(min_length=1, max_length=80)
+    label: Optional[str] = Field(default=None, max_length=120)
+    highlighted: bool = False
 
 
 class Diagram(BaseModel):
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=120)
     diagram_type: DiagramType
-    nodes: List[Node] = []
-    edges: List[Edge] = []
+    nodes: List[Node] = Field(default_factory=list)
+    edges: List[Edge] = Field(default_factory=list)
