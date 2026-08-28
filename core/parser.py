@@ -36,17 +36,17 @@ ALIASES = {
 
 RELATION_PATTERNS = [
     (re.compile(r"(.+?)\s+(?:connects?|talks?|communicates?)\s+(?:to|with)\s+(.+)", re.I), "connects"),
-    (re.compile(r"(.+?)\s+(?:sends?|passes?)\s+(?:data\s+)?(?:to|into)\s+(.+)", re.I), "sends"),
+    (re.compile(r"(.+?)\s+(?:sends?|passes?|pushes?)\s+(?:data\s+|code\s+)?(?:to|into)\s+(.+)", re.I), "sends"),
     (re.compile(r"(.+?)\s+(?:calls?|requests?)\s+(.+)", re.I), "calls"),
-    (re.compile(r"(.+?)\s+(?:uses?|reads?\s+from|writes?\s+to|depends?\s+on)\s+(.+)", re.I), "uses"),
+    (re.compile(r"(.+?)\s+(?:uses?|reads?\s+from|reads?|writes?\s+to|depends?\s+on|checks?)\s+(.+)", re.I), "uses"),
     (re.compile(r"(.+?)\s+(?:deploys?|ships?)\s+(?:to|into)\s+(.+)", re.I), "deploys"),
-    (re.compile(r"(.+?)\s+(?:triggers?|starts?)\s+(.+)", re.I), "triggers"),
+    (re.compile(r"(.+?)\s+(?:triggers?|starts?|runs?)\s+(.+)", re.I), "triggers"),
     (re.compile(r"(.+?)\s+(?:transitions?|moves?)\s+(?:to|into)\s+(.+)", re.I), "transitions"),
 ]
 
 
 def clean_name(value: str) -> str:
-    value = re.sub(r"^\s*(?:a|an|the)\s+", "", value.strip(), flags=re.I)
+    value = re.sub(r"^\s*(?:a|an|the|then)\s+", "", value.strip(), flags=re.I)
     value = re.sub(r"\s+", " ", value)
     return value.strip(" ,.;:")
 
@@ -76,7 +76,6 @@ def canonical_label(label: str) -> str:
 def _split_clauses(description: str) -> List[str]:
     text = description.replace("→", "->").replace("➜", "->").replace("⇒", "->")
     text = re.sub(r"\s*->\s*", " -> ", text)
-    text = re.sub(r"\s+and\s+", " | ", text, flags=re.I)
     text = re.sub(r"[.;\n]+", " | ", text)
     return [clean_name(item) for item in text.split("|") if clean_name(item)]
 
@@ -89,16 +88,17 @@ def _add_node(nodes: Dict[str, Node], label: str) -> str:
     return node_id
 
 
-def _parse_relation(clause: str) -> Tuple[str, str, str] | None:
+def _parse_relation(clause: str) -> Tuple[str, List[str], str] | None:
     if "->" in clause:
         pieces = [clean_name(piece) for piece in clause.split("->") if clean_name(piece)]
         if len(pieces) >= 2:
-            return pieces[0], pieces[1], "flows"
+            return pieces[0], pieces[1:], "flows"
 
     for pattern, label in RELATION_PATTERNS:
         match = pattern.fullmatch(clause)
         if match:
-            return clean_name(match.group(1)), clean_name(match.group(2)), label
+            targets = [clean_name(item) for item in re.split(r"\s+and\s+|\s*,\s*", match.group(2), flags=re.I) if clean_name(item)]
+            return clean_name(match.group(1)), targets, label
 
     return None
 
@@ -133,11 +133,12 @@ def parse_description(
     for clause in _split_clauses(description):
         relation = _parse_relation(clause)
         if relation:
-            source, target, relation_label = relation
+            source, targets, relation_label = relation
             source_id = _add_node(nodes, source)
-            target_id = _add_node(nodes, target)
-            if source_id != target_id:
-                edges.append(Edge(source=source_id, target=target_id, label=relation_label))
+            for target in targets:
+                target_id = _add_node(nodes, target)
+                if source_id != target_id:
+                    edges.append(Edge(source=source_id, target=target_id, label=relation_label))
             continue
 
         for mention in _extract_mentions(clause):
