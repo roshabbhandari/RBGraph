@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -101,6 +101,12 @@ def command_diagram(request: CommandRequest) -> dict:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@app.post("/api/validate")
+def validate_route(diagram: Diagram) -> dict:
+    errors = validate_diagram(diagram)
+    return {"valid": not errors, "errors": errors}
+
+
 @app.post("/api/diagrams")
 def save_diagram_route(diagram: Diagram) -> dict:
     errors = validate_diagram(diagram)
@@ -111,8 +117,14 @@ def save_diagram_route(diagram: Diagram) -> dict:
 
 
 @app.get("/api/diagrams")
-def history() -> dict:
-    return {"items": list_diagrams()}
+def history(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> dict:
+    try:
+        return {"items": list_diagrams(limit=limit, offset=offset)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.get("/api/diagrams/{diagram_id}")
