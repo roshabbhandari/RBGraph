@@ -191,9 +191,17 @@ def _wrap_label(label: str, limit: int) -> List[str]:
     words = label.split()
     if not words:
         return [""]
+
+    chunks = []
+    for word in words:
+        if len(word) <= limit:
+            chunks.append(word)
+            continue
+        chunks.extend(word[index:index + limit] for index in range(0, len(word), limit))
+
     lines = []
-    current = words[0]
-    for word in words[1:]:
+    current = chunks[0]
+    for word in chunks[1:]:
         if len(current) + len(word) + 1 <= limit:
             current = f"{current} {word}"
         else:
