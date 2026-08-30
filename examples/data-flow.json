@@ -1,0 +1,16 @@
+{
+  "name": "Data Flow",
+  "diagram_type": "data_flow",
+  "nodes": [
+    {"id": "client", "label": "Client", "category": "user"},
+    {"id": "api", "label": "API", "category": "backend"},
+    {"id": "redis", "label": "Redis", "category": "cache"},
+    {"id": "postgresql", "label": "PostgreSQL", "category": "database"}
+  ],
+  "edges": [
+    {"source": "client", "target": "api", "label": "request data"},
+    {"source": "api", "target": "redis", "label": "cache"},
+    {"source": "api", "target": "postgresql", "label": "persist"},
+    {"source": "postgresql", "target": "api", "label": "records"}
+  ]
+}
