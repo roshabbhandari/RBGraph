@@ -91,11 +91,6 @@ def _add_node(nodes: Dict[str, Node], label: str) -> str:
 
 
 def _parse_relation(clause: str) -> Tuple[str, List[str], str] | None:
-    if "->" in clause:
-        pieces = [clean_name(piece) for piece in clause.split("->") if clean_name(piece)]
-        if len(pieces) >= 2:
-            return pieces[0], pieces[1:], "flows"
-
     for pattern, label in RELATION_PATTERNS:
         match = pattern.fullmatch(clause)
         if match:
@@ -133,6 +128,17 @@ def parse_description(
     edges: List[Edge] = []
 
     for clause in _split_clauses(description):
+        if "->" in clause:
+            pieces = [clean_name(piece) for piece in clause.split("->") if clean_name(piece)]
+            if len(pieces) >= 2:
+                previous_id = _add_node(nodes, pieces[0])
+                for piece in pieces[1:]:
+                    target_id = _add_node(nodes, piece)
+                    if previous_id != target_id:
+                        edges.append(Edge(source=previous_id, target=target_id, label="flows"))
+                    previous_id = target_id
+                continue
+
         relation = _parse_relation(clause)
         if relation:
             source, targets, relation_label = relation
