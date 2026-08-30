@@ -1,0 +1,15 @@
+{
+  "name": "Deployment Workflow",
+  "diagram_type": "workflow",
+  "nodes": [
+    {"id": "developer", "label": "Developer", "category": "user"},
+    {"id": "github-actions", "label": "GitHub Actions", "category": "automation"},
+    {"id": "aws-lambda", "label": "AWS Lambda", "category": "serverless"},
+    {"id": "openai", "label": "OpenAI", "category": "ai"}
+  ],
+  "edges": [
+    {"source": "developer", "target": "github-actions", "label": "pushes"},
+    {"source": "github-actions", "target": "aws-lambda", "label": "deploys"},
+    {"source": "aws-lambda", "target": "openai", "label": "calls"}
+  ]
+}
