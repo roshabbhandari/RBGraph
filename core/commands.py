@@ -13,6 +13,12 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
 
     result = deepcopy(diagram)
 
+    if re.fullmatch(r"reset\s+layout", text, re.I):
+        for node in result.nodes:
+            node.x = None
+            node.y = None
+        return result, "Reset the diagram layout."
+
     connect_match = re.fullmatch(r"connect\s+(.+?)\s+to\s+(.+)", text, re.I)
     if connect_match:
         source_id = _find_node(result, connect_match.group(1))
@@ -138,7 +144,7 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
                 edge.highlighted = True
         return result, f"Highlighted {phrase}."
 
-    raise ValueError("Use add, connect, rename, remove, move, or highlight commands.")
+    raise ValueError("Use add, connect, rename, remove, move, reset, or highlight commands.")
 
 
 def _ensure_positions(diagram: Diagram) -> None:
