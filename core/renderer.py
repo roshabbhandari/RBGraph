@@ -167,7 +167,7 @@ def _render_edge(diagram: Diagram, edge, positions: Dict[str, Tuple[float, float
         label = f'<text x="{(x1 + x2) / 2:g}" y="{(y1 + y2) / 2 - 10:g}" text-anchor="middle" class="rbgraph-edge-label">{escape(edge.label)}</text>'
 
     return f'''<g class="rbgraph-edge{highlighted}">
-  <path d="{curve}" class="rbgraph-edge-line" marker-end="url(#rbgraph-arrow)" />
+  <path d="{curve}" class="rbgraph-edge-line" marker-end="url(#arrow)" />
   {label}
 </g>'''.strip()
 
@@ -252,4 +252,4 @@ def _grid(width: float, height: float) -> str:
 
 
 def _arrow_defs() -> str:
-    return '<defs><marker id="rbgraph-arrow" markerWidth="11" markerHeight="11" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L0 8 L10 4 z" fill="var(--rb-edge)" /></marker></defs>'
+    return '<defs><marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L0 8 L10 4 z" fill="var(--rb-edge)" /></marker></defs>'
