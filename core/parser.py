@@ -165,7 +165,7 @@ def parse_description(
     seen = set()
     unique_edges = []
     for edge in edges:
-        key = (edge.source, edge.target, edge.label)
+        key = (edge.source, edge.target)
         if key not in seen:
             seen.add(key)
             unique_edges.append(edge)
