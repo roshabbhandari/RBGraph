@@ -37,7 +37,27 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
         if not any(edge.source == source_id and edge.target == target_id for edge in result.edges):
             result.edges.append(Edge(source=source_id, target=target_id, label="connects"))
         target = next(node for node in result.nodes if node.id == target_id)
-        return result, f"Connected {next(node.label for node in result.nodes if node.id == source_id)} to {target.label}."
+        source = next(node for node in result.nodes if node.id == source_id)
+        return result, f"Connected {source.label} to {target.label}."
+
+    rename_match = re.fullmatch(r"rename\s+(.+?)\s+to\s+(.+)", text, re.I)
+    if rename_match:
+        node_id = _find_node(result, rename_match.group(1))
+        if not node_id:
+            raise ValueError("That node is not in the diagram.")
+        label = canonical_label(rename_match.group(2))
+        new_id = normalize_id(label)
+        if new_id != node_id and any(node.id == new_id for node in result.nodes):
+            raise ValueError("A node with that name already exists.")
+        node = next(item for item in result.nodes if item.id == node_id)
+        node.label = label
+        node.id = new_id
+        for edge in result.edges:
+            if edge.source == node_id:
+                edge.source = new_id
+            if edge.target == node_id:
+                edge.target = new_id
+        return result, f"Renamed node to {label}."
 
     add_match = re.fullmatch(r"add\s+(.+?)(?:\s+to\s+(.+))?", text, re.I)
     if add_match:
@@ -118,7 +138,7 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
                 edge.highlighted = True
         return result, f"Highlighted {phrase}."
 
-    raise ValueError("Use add, connect, remove, move, or highlight commands.")
+    raise ValueError("Use add, connect, rename, remove, move, or highlight commands.")
 
 
 def _ensure_positions(diagram: Diagram) -> None:
