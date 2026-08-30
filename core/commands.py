@@ -6,6 +6,10 @@ from core.models import Diagram, Edge, Node
 from core.parser import canonical_label, detect_category, normalize_id
 
 
+NODE_X_MIN = 96
+NODE_Y_MIN = 48
+
+
 def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
     text = " ".join(command.strip().split())
     if not text:
@@ -114,8 +118,8 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
         node = next(item for item in result.nodes if item.id == node_id)
         offsets = {"left": (-220, 0), "right": (220, 0), "up": (0, -150), "down": (0, 150)}
         dx, dy = offsets[move_match.group(2).lower()]
-        node.x = max(0, node.x + dx)
-        node.y = max(0, node.y + dy)
+        node.x = max(NODE_X_MIN, node.x + dx)
+        node.y = max(NODE_Y_MIN, node.y + dy)
         return result, f"Moved {node.label} {move_match.group(2).lower()}."
 
     if re.fullmatch(r"(?:clear|remove)\s+highlight(?:s)?", text, re.I):
