@@ -27,11 +27,18 @@ def validate_diagram(diagram: Diagram) -> List[str]:
             errors.append(f"Invalid y position for {node.id}.")
 
     known_ids = set(node_ids)
+    edge_keys = set()
     for edge in diagram.edges:
         if edge.source not in known_ids:
             errors.append(f"Edge source does not exist: {edge.source}.")
         if edge.target not in known_ids:
             errors.append(f"Edge target does not exist: {edge.target}.")
+        if edge.source == edge.target:
+            errors.append(f"Self-referencing edge is not allowed: {edge.source}.")
+        key = (edge.source, edge.target, edge.label)
+        if key in edge_keys:
+            errors.append(f"Duplicate edge is not allowed: {edge.source} -> {edge.target}.")
+        edge_keys.add(key)
 
     return errors
 
