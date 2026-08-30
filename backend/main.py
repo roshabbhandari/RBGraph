@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend.database import delete_diagram, get_saved_diagram, init_db, list_diagrams, save_diagram
+from backend.lifespan import app_lifespan
 from core.commands import apply_command
 from core.models import Diagram, DiagramType
 from core.parser import parse_description
@@ -21,6 +22,7 @@ app = FastAPI(
     title="RBGraph",
     description="Plain-English technical diagram generator",
     version="1.0.0",
+    lifespan=app_lifespan,
 )
 
 app.add_middleware(
@@ -43,11 +45,6 @@ class GenerateRequest(BaseModel):
 class CommandRequest(BaseModel):
     diagram: Diagram
     command: str = Field(min_length=1, max_length=500)
-
-
-@app.on_event("startup")
-def startup() -> None:
-    init_db()
 
 
 @app.get("/")
