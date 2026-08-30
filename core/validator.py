@@ -52,8 +52,19 @@ def validate_svg(svg: str) -> List[str]:
 
     if root.tag.split("}")[-1] != "svg":
         errors.append("SVG root element is invalid.")
-    if not root.attrib.get("viewBox"):
-        errors.append("SVG viewBox is missing.")
+
+    view_box = root.attrib.get("viewBox", "").split()
+    if len(view_box) != 4:
+        errors.append("SVG viewBox must contain four numbers.")
+    else:
+        try:
+            values = [float(value) for value in view_box]
+            if any(not isfinite(value) for value in values):
+                errors.append("SVG viewBox contains a non-finite value.")
+            elif values[2] <= 0 or values[3] <= 0:
+                errors.append("SVG viewBox width and height must be positive.")
+        except ValueError:
+            errors.append("SVG viewBox must contain numeric values.")
 
     lowered = svg.lower()
     if "<script" in lowered or "<foreignobject" in lowered:
