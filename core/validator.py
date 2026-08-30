@@ -69,6 +69,10 @@ def validate_svg(svg: str) -> List[str]:
     lowered = svg.lower()
     if "<script" in lowered or "<foreignobject" in lowered:
         errors.append("SVG contains an unsafe element.")
+    if re.search(r"(?:xlink:)?href\s*=\s*['\"]\s*(?:javascript:|data:text/html)", svg, re.I):
+        errors.append("SVG contains an unsafe link.")
+    if re.search(r"\bon(?:load|error|click|mouseover|focus)\s*=", svg, re.I):
+        errors.append("SVG contains an unsafe event handler.")
     if len(list(root)) < 2:
         errors.append("SVG does not contain enough visual structure.")
 
