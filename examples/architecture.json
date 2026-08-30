@@ -1,0 +1,17 @@
+{
+  "name": "Web Application Architecture",
+  "diagram_type": "architecture",
+  "nodes": [
+    {"id": "user", "label": "User", "category": "user", "x": 140, "y": 220},
+    {"id": "frontend", "label": "React", "category": "frontend", "x": 400, "y": 220},
+    {"id": "api", "label": "FastAPI", "category": "backend", "x": 660, "y": 220},
+    {"id": "redis", "label": "Redis", "category": "cache", "x": 920, "y": 120},
+    {"id": "postgresql", "label": "PostgreSQL", "category": "database", "x": 920, "y": 320}
+  ],
+  "edges": [
+    {"source": "user", "target": "frontend", "label": "uses"},
+    {"source": "frontend", "target": "api", "label": "calls"},
+    {"source": "api", "target": "redis", "label": "caches"},
+    {"source": "api", "target": "postgresql", "label": "queries"}
+  ]
+}
