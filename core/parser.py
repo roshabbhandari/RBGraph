@@ -36,6 +36,8 @@ ALIASES = {
 RELATION_PATTERNS = [
     (re.compile(r"(.+?)\s+(?:connects?|talks?|communicates?)\s+(?:to|with)\s+(.+)", re.I), "connects"),
     (re.compile(r"(.+?)\s+(?:sends?|passes?|pushes?)\s+(?:data\s+|code\s+)?(?:to|into)\s+(.+)", re.I), "sends"),
+    (re.compile(r"(.+?)\s+(?:stores?|persists?)\s+(?:data\s+)?(?:in|into|to)\s+(.+)", re.I), "stores"),
+    (re.compile(r"(.+?)\s+(?:loads?|reads?|retrieves?)\s+(?:data\s+)?(?:from)\s+(.+)", re.I), "reads"),
     (re.compile(r"(.+?)\s+(?:calls?|requests?)\s+(.+)", re.I), "calls"),
     (re.compile(r"(.+?)\s+(?:uses?|reads?\s+from|reads?|writes?\s+to|depends?\s+on|checks?)\s+(.+)", re.I), "uses"),
     (re.compile(r"(.+?)\s+(?:deploys?|ships?)\s+(?:to|into)\s+(.+)", re.I), "deploys"),
@@ -75,7 +77,7 @@ def canonical_label(label: str) -> str:
 def _split_clauses(description: str) -> List[str]:
     text = description.replace("→", "->").replace("➜", "->").replace("⇒", "->")
     text = re.sub(r"\s*->\s*", " -> ", text)
-    text = re.sub(r"\s+and\s+(?=[^.;\n]+?\s+(?:connects?|talks?|communicates?|sends?|passes?|pushes?|calls?|requests?|uses?|reads?|writes?|depends?|checks?|deploys?|ships?|triggers?|starts?|runs?|transitions?|moves?)\b)", " | ", text, flags=re.I)
+    text = re.sub(r"\s+and\s+(?=[^.;\n]+?\s+(?:connects?|talks?|communicates?|sends?|passes?|pushes?|stores?|persists?|loads?|reads?|retrieves?|calls?|requests?|uses?|writes?|depends?|checks?|deploys?|ships?|triggers?|starts?|runs?|transitions?|moves?)\b)", " | ", text, flags=re.I)
     text = re.sub(r"[.;\n]+", " | ", text)
     return [clean_name(item) for item in text.split("|") if clean_name(item)]
 
