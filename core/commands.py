@@ -13,6 +13,32 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
 
     result = deepcopy(diagram)
 
+    connect_match = re.fullmatch(r"connect\s+(.+?)\s+to\s+(.+)", text, re.I)
+    if connect_match:
+        source_id = _find_node(result, connect_match.group(1))
+        if not source_id:
+            raise ValueError("Source node is not in the diagram.")
+        target_label = canonical_label(connect_match.group(2))
+        target_id = _find_node(result, target_label)
+        if not target_id:
+            target_id = normalize_id(target_label)
+            if any(node.id == target_id for node in result.nodes):
+                target_id = f"{target_id}-2"
+            _ensure_positions(result)
+            source = next(node for node in result.nodes if node.id == source_id)
+            target = Node(
+                id=target_id,
+                label=target_label,
+                category=detect_category(target_label),
+                x=(source.x or 140) + 260,
+                y=source.y or 120,
+            )
+            result.nodes.append(target)
+        if not any(edge.source == source_id and edge.target == target_id for edge in result.edges):
+            result.edges.append(Edge(source=source_id, target=target_id, label="connects"))
+        target = next(node for node in result.nodes if node.id == target_id)
+        return result, f"Connected {next(node.label for node in result.nodes if node.id == source_id)} to {target.label}."
+
     add_match = re.fullmatch(r"add\s+(.+?)(?:\s+to\s+(.+))?", text, re.I)
     if add_match:
         label = canonical_label(add_match.group(1))
@@ -31,7 +57,8 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
                 node.x = target.x + 260
                 node.y = target.y
                 result.nodes.append(node)
-                result.edges.append(Edge(source=target_id, target=node_id, label="connects"))
+                if not any(edge.source == target_id and edge.target == node_id for edge in result.edges):
+                    result.edges.append(Edge(source=target_id, target=node_id, label="connects"))
                 return result, f"Added {label} and connected it to {target.label}."
 
         last = result.nodes[-1] if result.nodes else None
@@ -61,8 +88,8 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
         node = next(item for item in result.nodes if item.id == node_id)
         offsets = {"left": (-220, 0), "right": (220, 0), "up": (0, -150), "down": (0, 150)}
         dx, dy = offsets[move_match.group(2).lower()]
-        node.x += dx
-        node.y += dy
+        node.x = max(0, node.x + dx)
+        node.y = max(0, node.y + dy)
         return result, f"Moved {node.label} {move_match.group(2).lower()}."
 
     if re.fullmatch(r"(?:clear|remove)\s+highlight(?:s)?", text, re.I):
@@ -73,7 +100,7 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
     highlight_match = re.fullmatch(r"highlight\s+(.+)", text, re.I)
     if highlight_match:
         phrase = highlight_match.group(1).lower()
-        tokens = [token for token in re.findall(r"[a-z0-9_-]+", phrase) if token not in {"the", "path"}]
+        tokens = [token for token in re.findall(r"[a-z0-9_-]+", phrase) if token not in {"the", "path", "to", "from"}]
         for edge in result.edges:
             source = _node_label(result, edge.source).lower()
             target = _node_label(result, edge.target).lower()
@@ -91,7 +118,7 @@ def apply_command(diagram: Diagram, command: str) -> Tuple[Diagram, str]:
                 edge.highlighted = True
         return result, f"Highlighted {phrase}."
 
-    raise ValueError("Use add, remove, move, or highlight commands.")
+    raise ValueError("Use add, connect, remove, move, or highlight commands.")
 
 
 def _ensure_positions(diagram: Diagram) -> None:
